@@ -66,7 +66,7 @@ static gboolean debugMessages     = FALSE;            /* Boolean value for -d ar
 static gboolean closeTab          = FALSE;            /* Close the tab on child-exited signal */
 static va_list vargs;                                 /* Hold information about variable arguments */
 typedef struct KeyBindings {                          /* Key bindings struct */
-	char *key;
+    char *key;
     char *cmd;
 } Bindings;
 static Bindings keyBindings[TERM_CONFIG_LENGTH];      /* Array for custom key bindings */
@@ -91,14 +91,14 @@ static int printLog(char *format, ...) {
     if (!debugMessages) {
         return 0;
     }
-	fprintf(stderr, "%s[ %sdebug%s ] ",
+    fprintf(stderr, "%s[ %sdebug%s ] ",
         TERM_ATTR_BOLD,     /* Bold on */
         TERM_ATTR_COLOR,    /* Light blue */
         TERM_ATTR_DEFAULT); /* Default color */
     /* Format the string & print */
-  	va_start(vargs, format);
-  	vfprintf(stderr, format, vargs);
-  	va_end(vargs);
+    va_start(vargs, format);
+    vfprintf(stderr, format, vargs);
+    va_end(vargs);
     /* All attributes off */
     fprintf(stderr, "%s", TERM_ATTR_OFF);
     return 0;
@@ -213,19 +213,19 @@ static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event,
                 setTermFont(terminal, currentFontSize - 1);
                 return TRUE;
             case GDK_KEY_equal:
-			    setTermFont(terminal, defaultFontSize);
-			    return TRUE;
-			/*Switch to fullscreen*/
+                setTermFont(terminal, defaultFontSize);
+                return TRUE;
+            /*Switch to fullscreen*/
             case GDK_KEY_F:          /* Fallthrough */
             case GDK_KEY_f:          /* Fallthrough */
-				if (!fs_state) {
-					gtk_window_fullscreen(GTK_WINDOW(window));
-					fs_state = 1;
-				} else {
-					gtk_window_unfullscreen(GTK_WINDOW(window));
-					fs_state = 0;
-				}
-				return TRUE;
+                if (!fs_state) {
+                    gtk_window_fullscreen(GTK_WINDOW(window));
+                    fs_state = 1;
+                } else {
+                    gtk_window_unfullscreen(GTK_WINDOW(window));
+                    fs_state = 0;
+                }
+                return TRUE;
             /* Open new tab */
             case GDK_KEY_Return:
                 gtk_notebook_append_page(GTK_NOTEBOOK(notebook), getTerm(), NULL);
@@ -265,8 +265,8 @@ static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event,
                     }
                 }
         }
-	}
-	return FALSE;
+    }
+    return FALSE;
 }
 
 /*!
@@ -277,11 +277,11 @@ static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event,
  * \return TRUE on title change
  */
 static gboolean termOnTitleChanged(GtkWidget *terminal, gpointer userData) {
-	GtkWindow *window = userData;
-	if (termTitle == NULL) gtk_window_set_title(window,
+    GtkWindow *window = userData;
+    if (termTitle == NULL) gtk_window_set_title(window,
             vte_terminal_get_window_title(VTE_TERMINAL(terminal))?:TERM_NAME);
     else gtk_window_set_title(window, termTitle);
-	return TRUE;
+    return TRUE;
 }
 
 /*!
@@ -379,9 +379,9 @@ static int setTermFont(GtkWidget* terminal, int fontSize) {
     gchar *fontStr = g_strconcat(termFont, " ",
         g_strdup_printf("%d", fontSize), NULL);
     if ((fontDesc = pango_font_description_from_string(fontStr)) != NULL) {
-	    vte_terminal_set_font(VTE_TERMINAL(terminal), fontDesc);
+        vte_terminal_set_font(VTE_TERMINAL(terminal), fontDesc);
         currentFontSize = fontSize;
-	    pango_font_description_free(fontDesc);
+        pango_font_description_free(fontDesc);
         g_free(fontStr);
     }
     return 0;
@@ -415,7 +415,7 @@ static int configureTerm(GtkWidget* terminal) {
         VTE_CURSOR_BLINK_OFF);
     /* Set char exceptions */
     vte_terminal_set_word_char_exceptions(VTE_TERMINAL(terminal),
-	    termWordChars);
+        termWordChars);
     /* Set the terminal colors and font */
     vte_terminal_set_colors(VTE_TERMINAL(terminal),
         &CLR_GDK(termForeground, 0),            /* Foreground */
