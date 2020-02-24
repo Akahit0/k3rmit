@@ -48,6 +48,7 @@ static int actionKey   = GDK_MOD1_MASK;               /* Key to check on press *
 static int tabPosition = 0;                           /* Tab position (0/1 -> bottom/top) */
 static int keyCount    = 0;                           /* Count of custom binding keys */
 static int opt;                                       /* Argument parsing option */
+static int fs_state = 0;                              /* Full screen state */
 static char *termFont      = TERM_FONT;               /* Default terminal font */
 static char *termLocale    = TERM_LOCALE;             /* Terminal locale (numeric) */
 static char *termWordChars = TERM_WORD_CHARS;         /* Word characters exceptions */
@@ -69,7 +70,7 @@ typedef struct KeyBindings {                          /* Key bindings struct */
     char *cmd;
 } Bindings;
 static Bindings keyBindings[TERM_CONFIG_LENGTH];      /* Array for custom key bindings */
-static GdkRGBA termPalette[] = {             
+static GdkRGBA termPalette[] = {
         CLR_GDK(0x3f3f3f, 0), CLR_GDK(0xcf0000, 0),
         CLR_GDK(0x33ff00, 0), CLR_GDK(0xf3f828, 0),
         CLR_GDK(0x0300ff, 0), CLR_GDK(0xcc00ff, 0),
@@ -83,14 +84,14 @@ static GdkRGBA termPalette[] = {
 /*!
  * Print log (debug) message with format specifiers.
  *
- * \param format string and format specifiers for vfprintf function  
+ * \param format string and format specifiers for vfprintf function
  * \return 0 on success
  */
 static int printLog(char *format, ...) {
     if (!debugMessages) {
         return 0;
     }
-	fprintf(stderr, "%s[ %sdebug%s ] ", 
+	fprintf(stderr, "%s[ %sdebug%s ] ",
         TERM_ATTR_BOLD,     /* Bold on */
         TERM_ATTR_COLOR,    /* Light blue */
         TERM_ATTR_DEFAULT); /* Default color */
@@ -112,7 +113,7 @@ static int printLog(char *format, ...) {
 static int connectSignals(GtkWidget* terminal) {
     g_signal_connect(terminal, "child-exited", G_CALLBACK(termOnChildExit), NULL);
     g_signal_connect(terminal, "key-press-event", G_CALLBACK(termOnKeyPress), NULL);
-    g_signal_connect(terminal, "window-title-changed", G_CALLBACK(termOnTitleChanged), 
+    g_signal_connect(terminal, "window-title-changed", G_CALLBACK(termOnTitleChanged),
                         GTK_WINDOW(window));
     return 0;
 }
@@ -125,7 +126,7 @@ static int connectSignals(GtkWidget* terminal) {
  * \param userData
  * \return TRUE on exit
  */
-static gboolean termOnChildExit(VteTerminal *terminal, gint status, 
+static gboolean termOnChildExit(VteTerminal *terminal, gint status,
         gpointer userData) {
     /* 'child-exited' signal is emitted on both terminal exit
      * and (notebook) page deletion. Use closeTab variable
@@ -134,7 +135,7 @@ static gboolean termOnChildExit(VteTerminal *terminal, gint status,
     if(!closeTab) {
         /* Close the current tab */
         if(gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) != 1) {
-            gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 
+            gtk_notebook_remove_page(GTK_NOTEBOOK(notebook),
                 gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)));
             gtk_widget_queue_draw(GTK_WIDGET(notebook));
         /* Exit the terminal */
@@ -150,13 +151,13 @@ static gboolean termOnChildExit(VteTerminal *terminal, gint status,
 
 /*!
  * Handle terminal key press events.
- * 
+ *
  * \param terminal
  * \param event (key press or release)
  * \param userData
  * \return FALSE on normal press & TRUE on custom actions
  */
-static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event, 
+static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event,
                 gpointer userData) {
     /* Unused user data */
     UNUSED(userData);
@@ -173,14 +174,14 @@ static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event,
             /* Copy & Paste */
             case GDK_KEY_C: /* Fallthrough */
             case GDK_KEY_c:
-                vte_terminal_copy_clipboard_format(VTE_TERMINAL(terminal), 
+                vte_terminal_copy_clipboard_format(VTE_TERMINAL(terminal),
                     VTE_FORMAT_TEXT);
                 return TRUE;
             case GDK_KEY_V: /* Fallthrough */
             case GDK_KEY_v:
                 vte_terminal_paste_clipboard(VTE_TERMINAL(terminal));
                 return TRUE;
-            /* Reload configuration file */ 
+            /* Reload configuration file */
             case GDK_KEY_R: /* Fallthrough */
             case GDK_KEY_r:
                 printLog("Reloading configuration file...\n");
@@ -214,6 +215,17 @@ static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event,
             case GDK_KEY_equal:
 			    setTermFont(terminal, defaultFontSize);
 			    return TRUE;
+			/*Switch to fullscreen*/
+            case GDK_KEY_F:          /* Fallthrough */
+            case GDK_KEY_f:          /* Fallthrough */
+				if (!fs_state) {
+					gtk_window_fullscreen(GTK_WINDOW(window));
+					fs_state = 1;
+				} else {
+					gtk_window_unfullscreen(GTK_WINDOW(window));
+					fs_state = 0;
+				}
+				return TRUE;
             /* Open new tab */
             case GDK_KEY_Return:
                 gtk_notebook_append_page(GTK_NOTEBOOK(notebook), getTerm(), NULL);
@@ -238,9 +250,9 @@ static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event,
             case GDK_KEY_w:         /* Fallthrough */
             case GDK_KEY_BackSpace: /* Fallthrough */
                 if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) == 1)
-                    return TRUE;    
+                    return TRUE;
                 closeTab = TRUE;
-                gtk_notebook_remove_page(GTK_NOTEBOOK(notebook), 
+                gtk_notebook_remove_page(GTK_NOTEBOOK(notebook),
                     gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)));
                 gtk_widget_queue_draw(GTK_WIDGET(notebook));
                 return TRUE;
@@ -280,7 +292,7 @@ static gboolean termOnTitleChanged(GtkWidget *terminal, gpointer userData) {
  * \param userData
  * \return TRUE on size change
  */
-static gboolean termOnResize(GtkWidget *widget, GtkAllocation *allocation, 
+static gboolean termOnResize(GtkWidget *widget, GtkAllocation *allocation,
         gpointer userData) {
     if (tabPosition == 1)
         allocation->height = 0;
@@ -298,7 +310,7 @@ static gboolean termOnResize(GtkWidget *widget, GtkAllocation *allocation,
  * \param userData
  * \return TRUE on tab addition
  */
-static gboolean termTabOnAdd(GtkNotebook *notebook, GtkWidget *child, 
+static gboolean termTabOnAdd(GtkNotebook *notebook, GtkWidget *child,
         guint pageNum, gpointer userData) {
     gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), pageNum);
     return TRUE;
@@ -313,7 +325,7 @@ static gboolean termTabOnAdd(GtkNotebook *notebook, GtkWidget *child,
  * \param userData
  * \return TRUE on switch
  */
-static gboolean termTabOnSwitch(GtkNotebook *notebook, GtkWidget *page, 
+static gboolean termTabOnSwitch(GtkNotebook *notebook, GtkWidget *page,
         guint pageNum, gpointer userData) {
     /* Destroy tabs label if there's not more than one tabs */
     if(gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)) == 1) {
@@ -335,21 +347,21 @@ static gboolean termTabOnSwitch(GtkNotebook *notebook, GtkWidget *page,
         g_strdup_printf("%d", defaultFontSize-1), NULL);
     /* Prepare the label text (use different color for current tab) */
     tabLabelText = g_markup_printf_escaped(
-        "<span font='\%s' foreground='#\%02X\%02X\%02X'>", 
-        fontStr, 
-        (int)(termPalette[4].red*255), 
-        (int)(termPalette[4].green*255), 
+        "<span font='\%s' foreground='#\%02X\%02X\%02X'>",
+        fontStr,
+        (int)(termPalette[4].red*255),
+        (int)(termPalette[4].green*255),
         (int)(termPalette[4].blue*255));
     for (int i = 0; i < gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook)); i++) {
         if (i == pageNum)
-            tabLabelText = g_strconcat(tabLabelText, 
-                g_strdup_printf("<span foreground='#%x'> %d </span>", 
+            tabLabelText = g_strconcat(tabLabelText,
+                g_strdup_printf("<span foreground='#%x'> %d </span>",
                 termForeground, i+1), NULL);
         else
-            tabLabelText = g_strconcat(tabLabelText, 
+            tabLabelText = g_strconcat(tabLabelText,
                 g_strdup_printf(" %d ", i+1), NULL);
     }
-    tabLabelText = g_strconcat(tabLabelText, "~</span>", NULL);    
+    tabLabelText = g_strconcat(tabLabelText, "~</span>", NULL);
     /* Set the label text with markup */
     gtk_label_set_markup(GTK_LABEL(tabLabel), tabLabelText);
     g_free(fontStr);
@@ -364,7 +376,7 @@ static gboolean termTabOnSwitch(GtkNotebook *notebook, GtkWidget *page,
  * \return 0 on success
  */
 static int setTermFont(GtkWidget* terminal, int fontSize) {
-    gchar *fontStr = g_strconcat(termFont, " ", 
+    gchar *fontStr = g_strconcat(termFont, " ",
         g_strdup_printf("%d", fontSize), NULL);
     if ((fontDesc = pango_font_description_from_string(fontStr)) != NULL) {
 	    vte_terminal_set_font(VTE_TERMINAL(terminal), fontDesc);
@@ -399,7 +411,7 @@ static int configureTerm(GtkWidget* terminal) {
     /* Allow hyperlinks */
     vte_terminal_set_allow_hyperlink(VTE_TERMINAL(terminal), TRUE);
     /* Zuckerberg feature */
-    vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal), 
+    vte_terminal_set_cursor_blink_mode(VTE_TERMINAL(terminal),
         VTE_CURSOR_BLINK_OFF);
     /* Set char exceptions */
     vte_terminal_set_word_char_exceptions(VTE_TERMINAL(terminal),
@@ -409,7 +421,7 @@ static int configureTerm(GtkWidget* terminal) {
         &CLR_GDK(termForeground, 0),            /* Foreground */
         &CLR_GDK(termBackground, termOpacity),  /* Background */
         termPalette ,                           /* Palette */
-        sizeof(termPalette)/sizeof(GdkRGBA)); 
+        sizeof(termPalette)/sizeof(GdkRGBA));
     setTermFont(terminal, defaultFontSize);
     return 0;
 }
@@ -454,7 +466,7 @@ static GtkWidget* getTerm() {
     printLog("shell: %s\n", *command);
     g_strfreev(envp);
     /* Spawn terminal asynchronously */
-    vte_terminal_spawn_async(VTE_TERMINAL(terminal), 
+    vte_terminal_spawn_async(VTE_TERMINAL(terminal),
         VTE_PTY_DEFAULT,   /* pty flag */
         NULL,              /* working directory */
         command,           /* argv */
@@ -483,7 +495,7 @@ static int startTerm() {
     gtk_window_set_title(GTK_WINDOW(window), TERM_NAME);
     gtk_widget_set_visual(window, /* Alpha channel for transparency */
         gdk_screen_get_rgba_visual(gtk_widget_get_screen(window)));
-    gtk_widget_override_background_color(window, GTK_STATE_FLAG_NORMAL, 
+    gtk_widget_override_background_color(window, GTK_STATE_FLAG_NORMAL,
         &CLR_GDK(termBackground, termOpacity));
     /* Create & configure the paned widget */
     paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
@@ -519,11 +531,11 @@ static int startTerm() {
  * Read settings from configuration file and apply.
  */
 static void parseSettings() {
-    char buf[TERM_CONFIG_LENGTH], 
-        option[TERM_CONFIG_LENGTH], 
+    char buf[TERM_CONFIG_LENGTH],
+        option[TERM_CONFIG_LENGTH],
         value[TERM_CONFIG_LENGTH];
     if(configFileName == NULL)
-        configFileName = g_strconcat(getenv("HOME"), 
+        configFileName = g_strconcat(getenv("HOME"),
                 TERM_CONFIG_DIR, TERM_NAME, ".conf", NULL);
     else
         defaultConfigFile = FALSE;
@@ -565,7 +577,7 @@ static void parseSettings() {
                 /* Execute option is provided */
                 if (!strcmp(option, "bindx"))
                 /* Append carriage return to command */
-                    keyBindings[keyCount].cmd = 
+                    keyBindings[keyCount].cmd =
                         g_strconcat(g_strdup(cmd+2), "\r", NULL);
                 else
                     keyBindings[keyCount].cmd = g_strdup(cmd+2);
@@ -583,7 +595,7 @@ static void parseSettings() {
                 tabPosition = 1;
         /* Terminal font */
         } else if(!strncmp(option, "font", strlen(option))) {
-            /* Parse the line again for font size */ 
+            /* Parse the line again for font size */
             sscanf(buf, "%s %[^\n]\n", option, value);
             /* Split the line and get last element */
             fontSize = strrchr(value, ' ');
@@ -609,7 +621,7 @@ static void parseSettings() {
             colorIndex = strrchr(option, 'r');
             if (colorIndex != NULL) {
                 /* Set the color in palette */
-                termPalette[atoi(colorIndex+1)] = 
+                termPalette[atoi(colorIndex+1)] =
                     CLR_GDK((int)strtol(value, NULL, 16), 0);
             }
         }
@@ -646,7 +658,7 @@ static int parseArgs(int argc, char **argv) {
                 break;
             case 'v':
                 /* Show version information */
-                fprintf(stderr, 
+                fprintf(stderr,
                     "%s [ %sk3rmit%s ] ~ v%s \n"
                     "   (+)(+)   ~ VTE-based\r\n"
                     "  /      \\  ~ simple\r\n"
@@ -664,7 +676,7 @@ static int parseArgs(int argc, char **argv) {
                 fprintf(stderr, "%s[ %susage%s ] %s [-h] "
                 "[-v] [-d] [-c config] [-t title] [-e command]%s\n",
                     TERM_ATTR_BOLD,
-                    TERM_ATTR_COLOR,  
+                    TERM_ATTR_COLOR,
                     TERM_ATTR_DEFAULT,
                     TERM_NAME,
                     TERM_ATTR_OFF);
