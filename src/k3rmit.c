@@ -61,6 +61,7 @@ static char *termCommand;                             /* Command to execute in t
 static char *tabLabelText;                            /* The label text for showing the tabs situation */
 static gchar **envp;                                  /* Variables for starting the terminal */
 static gchar **command;
+static gboolean fs_state          = FALSE;            /* Full screen state */
 static gboolean defaultConfigFile = TRUE;             /* Boolean value for -c argument */
 static gboolean debugMessages     = FALSE;            /* Boolean value for -d argument */
 static gboolean closeTab          = FALSE;            /* Close the tab on child-exited signal */
@@ -217,13 +218,13 @@ static gboolean termOnKeyPress(GtkWidget *terminal, GdkEventKey *event,
                 return TRUE;
             /*Switch to fullscreen*/
             case GDK_KEY_F:          /* Fallthrough */
-            case GDK_KEY_f:          /* Fallthrough */
+            case GDK_KEY_f:
                 if (!fs_state) {
                     gtk_window_fullscreen(GTK_WINDOW(window));
-                    fs_state = 1;
+                    fs_state = TRUE;
                 } else {
                     gtk_window_unfullscreen(GTK_WINDOW(window));
-                    fs_state = 0;
+                    fs_state = FALSE;
                 }
                 return TRUE;
             /* Open new tab */
