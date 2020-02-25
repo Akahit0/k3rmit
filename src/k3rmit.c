@@ -48,7 +48,6 @@ static int actionKey   = GDK_MOD1_MASK;               /* Key to check on press *
 static int tabPosition = 0;                           /* Tab position (0/1 -> bottom/top) */
 static int keyCount    = 0;                           /* Count of custom binding keys */
 static int opt;                                       /* Argument parsing option */
-static int fs_state = 0;                              /* Full screen state */
 static char *termFont      = TERM_FONT;               /* Default terminal font */
 static char *termLocale    = TERM_LOCALE;             /* Terminal locale (numeric) */
 static char *termWordChars = TERM_WORD_CHARS;         /* Word characters exceptions */
